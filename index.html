@@ -84,7 +84,7 @@
 <body>
 <div class="wrap">
   <h1>Deeksha Vedantu</h1>
-  <p class="sub">Add your name and photo to your video</p>
+  <p class="sub">Add your name and photo to your video, ready to download</p>
 
   <div class="card">
 
@@ -96,7 +96,7 @@
       <div class="center"><strong id="setup-title">Let's set you up (one time only)</strong></div>
 
       <label for="name-input">Your name</label>
-      <input type="text" id="name-input" placeholder="e.g. Ankit Singh" maxlength="40" autocomplete="name">
+      <input type="text" id="name-input" placeholder="e.g. Kalash Sharma" maxlength="40" autocomplete="name">
 
       <label for="photo-input">Your photo</label>
       <input type="file" id="photo-input" accept="image/*">
@@ -121,6 +121,9 @@
     <div id="view-ready" hidden>
       <p class="center" id="ready-info"></p>
       <div class="note" id="ready-warning" hidden></div>
+      <label for="comment-input">Comment (optional)</label>
+      <input type="text" id="comment-input" placeholder="e.g. Happy Diwali!" maxlength="80">
+      <div class="hint">If you add a comment, it appears in a bar at the top of the video.</div>
       <button id="btn-create">Create my video</button>
       <button id="btn-other" class="secondary">Choose a different video</button>
     </div>
@@ -215,73 +218,140 @@ function loadImg(src) {
   });
 }
 
-/* ---------- the footer (name + photo), drawn once and reused on every frame ---------- */
-function buildFooter(photo, profile, W, footerH) {
-  const c = document.createElement('canvas');
-  c.width = W; c.height = footerH;
-  const f = c.getContext('2d');
+/* ---------- bars: footer (name + photo) and optional comment bar on top ---------- */
+const BAR_FONT = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+function accentH(W) { return Math.max(4, Math.round(W * 0.007)); }
 
-  const bg = f.createLinearGradient(0, 0, W, footerH);
+function paintBarBase(c, y, W, h) {
+  const bg = c.createLinearGradient(0, y, W, y + h);
   bg.addColorStop(0, '#fff3e6');
   bg.addColorStop(1, '#ffd3a8');
-  f.fillStyle = bg;
-  f.fillRect(0, 0, W, footerH);
-
-  const bar = f.createLinearGradient(0, 0, W, 0);
+  c.fillStyle = bg;
+  c.fillRect(0, y, W, h);
+}
+function paintAccent(c, y, W) {
+  const bar = c.createLinearGradient(0, 0, W, 0);
   bar.addColorStop(0, '#f58220');
   bar.addColorStop(1, '#d94f00');
-  f.fillStyle = bar;
-  f.fillRect(0, 0, W, Math.max(4, Math.round(W * 0.007)));
-
-  const pad = footerH * 0.16;
-  const d = footerH - pad * 2;
-  const gap = footerH * 0.22;
-  const FONT = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-
-  let fontSize = footerH * 0.32;
-  const maxTextW = W * 0.8 - d - gap;
-  f.font = '700 ' + fontSize + 'px ' + FONT;
-  while (f.measureText(profile.name).width > maxTextW && fontSize > 10) {
-    fontSize -= 2;
-    f.font = '700 ' + fontSize + 'px ' + FONT;
+  c.fillStyle = bar;
+  c.fillRect(0, y, W, accentH(W));
+}
+function wrapLines(c, text, maxW) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (c.measureText(t).width <= maxW || !cur) cur = t;
+    else { lines.push(cur); cur = w; }
   }
-  const textW = f.measureText(profile.name).width;
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// Footer: orange line on top, then photo + name centred in the space below it
+function paintFooter(c, y, W, h, profile, photo) {
+  paintBarBase(c, y, W, h);
+  paintAccent(c, y, W);
+  const line = accentH(W);
+  const avail = h - line;                 // space left under the orange line
+  const pad = avail * 0.16;               // same padding above and below
+  const d = avail - pad * 2;              // photo diameter
+  const gap = avail * 0.22;
+
+  let fontSize = avail * 0.32;
+  const maxTextW = W * 0.8 - d - gap;
+  c.font = '700 ' + fontSize + 'px ' + BAR_FONT;
+  while (c.measureText(profile.name).width > maxTextW && fontSize > 10) {
+    fontSize -= 2;
+    c.font = '700 ' + fontSize + 'px ' + BAR_FONT;
+  }
+  const textW = c.measureText(profile.name).width;
   const startX = (W - (d + gap + textW)) / 2;
-  const cy = footerH / 2;
+  const cy = y + line + avail / 2;
 
-  f.save();
-  f.beginPath();
-  f.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
-  f.closePath();
-  f.clip();
-  f.drawImage(photo, startX, cy - d / 2, d, d);
-  f.restore();
+  c.save();
+  c.beginPath();
+  c.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
+  c.closePath();
+  c.clip();
+  c.drawImage(photo, startX, cy - d / 2, d, d);
+  c.restore();
 
-  f.beginPath();
-  f.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
-  f.lineWidth = Math.max(2, d * 0.04);
-  f.strokeStyle = '#f26b1d';
-  f.stroke();
+  c.beginPath();
+  c.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
+  c.lineWidth = Math.max(2, d * 0.04);
+  c.strokeStyle = '#f26b1d';
+  c.stroke();
 
-  f.fillStyle = '#3b1a08';
-  f.textBaseline = 'middle';
-  f.textAlign = 'left';
-  f.fillText(profile.name, startX + d + gap, cy);
-  return c;
+  c.fillStyle = '#3b1a08';
+  c.textBaseline = 'middle';
+  c.textAlign = 'left';
+  c.fillText(profile.name, startX + d + gap, cy);
+}
+
+// Comment bar: same look as the footer, orange line on its bottom edge, comment text centred
+function paintCommentBar(c, y, W, h, text) {
+  paintBarBase(c, y, W, h);
+  paintAccent(c, y + h - accentH(W), W);
+  const avail = h - accentH(W);
+  const maxW = W * 0.9;
+  let fontSize = avail * 0.36, lines = [];
+  for (;;) {
+    c.font = '700 ' + fontSize + 'px ' + BAR_FONT;
+    lines = wrapLines(c, text, maxW);
+    const widest = Math.max.apply(null, lines.map(l => c.measureText(l).width));
+    if ((lines.length <= 2 && widest <= maxW) || fontSize <= 10) break;
+    fontSize -= 2;
+  }
+  c.fillStyle = '#3b1a08';
+  c.textBaseline = 'middle';
+  c.textAlign = 'center';
+  const lh = fontSize * 1.2;
+  let ty = y + avail / 2 - ((lines.length - 1) * lh) / 2;
+  lines.forEach(l => { c.fillText(l, W / 2, ty); ty += lh; });
 }
 
 /* ---------- state for the video being made ---------- */
 const canvas = $('canvas');
 const ctx = canvas.getContext('2d');
-let videoEl = null, objectUrl = null, layout = null, footerCanvas = null;
+let videoEl = null, objectUrl = null, layout = null, footerCanvas = null, commentCanvas = null, photoImg = null;
 let recorder = null, chunks = [], running = false, rafId = 0, discard = false;
 let audioCtx = null, activeStream = null, wakeLock = null;
 let resultUrl = null, resultBlob = null, resultExt = 'mp4';
 
 function drawFrame() {
   if (!videoEl || !layout) return;
-  ctx.drawImage(videoEl, 0, 0, layout.W, layout.H);
-  ctx.drawImage(footerCanvas, 0, layout.H);
+  if (commentCanvas) ctx.drawImage(commentCanvas, 0, 0);
+  ctx.drawImage(videoEl, 0, layout.topH, layout.W, layout.H);
+  ctx.drawImage(footerCanvas, 0, layout.topH + layout.H);
+}
+
+// Works out the sizes and draws the (static) top and bottom bars once.
+// Called when a video is chosen and whenever the comment changes.
+function rebuildLayout() {
+  if (!videoEl || !photoImg) return;
+  const profile = getProfile();
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  const sc = Math.min(1, CONFIG.MAX_LONG_SIDE / Math.max(vw, vh));
+  const W = even(vw * sc), H = even(vh * sc), footerH = even(W * 0.13);
+  const comment = $('comment-input').value.trim();
+  const topH = comment ? even(W * 0.11) : 0;     // the top bar only appears when a comment is typed
+  layout = { W, H, topH, footerH, totalH: topH + H + footerH };
+
+  footerCanvas = document.createElement('canvas');
+  footerCanvas.width = W; footerCanvas.height = footerH;
+  paintFooter(footerCanvas.getContext('2d'), 0, W, footerH, profile, photoImg);
+
+  commentCanvas = null;
+  if (topH) {
+    commentCanvas = document.createElement('canvas');
+    commentCanvas.width = W; commentCanvas.height = topH;
+    paintCommentBar(commentCanvas.getContext('2d'), 0, W, topH, comment);
+  }
+  canvas.width = W;
+  canvas.height = layout.totalH;
+  drawFrame();
 }
 
 async function lockScreen() {
@@ -364,15 +434,8 @@ async function onVideoPicked(file) {
     if (!videoEl.videoWidth || !videoEl.videoHeight) throw new Error('This file does not contain a picture. Please choose a video.');
     if (!isFinite(videoEl.duration) || videoEl.duration <= 0) throw new Error('Could not work out the length of this video. Please try another one.');
 
-    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-    const s = Math.min(1, CONFIG.MAX_LONG_SIDE / Math.max(vw, vh));
-    const W = even(vw * s), H = even(vh * s), footerH = even(W * 0.13);
-    layout = { W, H, footerH, totalH: H + footerH };
-
-    const photo = await loadImg(profile.photo);
-    footerCanvas = buildFooter(photo, profile, W, footerH);
-    canvas.width = W;
-    canvas.height = layout.totalH;
+    photoImg = await loadImg(profile.photo);
+    rebuildLayout();
 
     // show the first moment of the video with the footer
     await new Promise(resolve => {
@@ -446,6 +509,7 @@ function startCreate() {
     return;
   }
   const mime = pickMime();
+  rebuildLayout();
   show('working');
   setProgress(0);
   discard = false;
@@ -570,6 +634,12 @@ $('video-input').addEventListener('change', e => {
 });
 $('btn-other').addEventListener('click', () => { cleanupVideo(); showPick(); });
 $('btn-create').addEventListener('click', startCreate);
+
+let commentTimer = null;
+$('comment-input').addEventListener('input', () => {
+  clearTimeout(commentTimer);
+  commentTimer = setTimeout(() => { if (videoEl && !running) rebuildLayout(); }, 120);
+});
 
 $('btn-cancel-work').addEventListener('click', () => {
   discard = true;

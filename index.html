@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f26b1d">
+<title>Deeksha Vedantu | Status Video</title>
+<style>
+  :root {
+    color-scheme: light;
+    --accent: #f26b1d;
+    --accent-dark: #d94f00;
+    --accent-grad: linear-gradient(135deg, #f58220, #d94f00);
+    --bg: #fff1e3;
+    --card: #fffaf5;
+    --text: #2b1a10;
+    --muted: #7a5a45;
+    --border: #f1d3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(180deg, #ffdcbc 0%, #fff3e6 60%, #fff3e6 100%) fixed;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .wrap { width: 100%; max-width: 520px; }
+  h1 {
+    font-size: 30px; font-weight: 800; letter-spacing: .4px;
+    margin: 4px 0 4px; text-align: center;
+    background: linear-gradient(90deg, #f58220, #d94f00);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .sub { text-align: center; color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 28px rgba(217, 79, 0, .15);
+  }
+  [hidden] { display: none !important; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 6px; }
+  input[type=text] {
+    width: 100%; padding: 12px; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: #ffffff; color: var(--text);
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  input[type=file] { width: 100%; font-size: 14px; }
+  .photo-preview {
+    width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--border); display: block; margin: 12px auto 0;
+  }
+  button {
+    font-size: 16px; font-weight: 600; padding: 13px 18px;
+    border: 0; border-radius: 10px; cursor: pointer; width: 100%;
+    background: var(--accent-grad); color: #ffffff; margin-top: 16px;
+  }
+  button:hover { filter: brightness(1.07); }
+  button.secondary { background: #ffe8d4; color: var(--text); border: 1px solid var(--border); }
+  button.secondary:hover { background: #ffdcc0; filter: none; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  canvas, video#result-video {
+    display: block; margin: 0 auto;
+    width: auto; height: auto; max-width: 100%; max-height: 70vh;
+    border-radius: 12px; border: 1px solid var(--border); background: #000;
+  }
+  #stage { margin-bottom: 4px; }
+  .center { text-align: center; }
+  .error { color: #9a1b0f; background: #fde8e4; border: 1px solid #f5b5ab; border-radius: 10px; padding: 14px; font-size: 14px; margin-bottom: 12px; }
+  .note { background: #fff1dc; border: 1px solid #f5cf9d; color: #6b3b0a; border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 12px; }
+  .progress { height: 12px; background: #ffe8d4; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); margin-top: 14px; }
+  .progress > div { height: 100%; width: 0%; background: var(--accent-grad); transition: width .2s linear; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Deeksha Vedantu</h1>
+  <p class="sub">Add your name and photo to your video, ready to download</p>
+
+  <div class="card">
+
+    <!-- The picture shown while previewing / creating the video -->
+    <div id="stage" hidden><canvas id="canvas" width="360" height="640"></canvas></div>
+
+    <!-- Setup: ask for name + photo (one time) -->
+    <div id="view-setup" hidden>
+      <div class="center"><strong id="setup-title">Let's set you up (one time only)</strong></div>
+
+      <label for="name-input">Your name</label>
+      <input type="text" id="name-input" placeholder="e.g. Kalash Sharma" maxlength="40" autocomplete="name">
+
+      <label for="photo-input">Your photo</label>
+      <input type="file" id="photo-input" accept="image/*">
+      <img id="photo-preview" class="photo-preview" alt="" hidden>
+      <div class="hint">A clear, front-facing photo works best. It stays on your device.</div>
+
+      <button id="btn-save" disabled>Save and continue</button>
+      <button id="btn-cancel" class="secondary" hidden>Cancel</button>
+    </div>
+
+    <!-- Pick a video -->
+    <div id="view-pick" hidden>
+      <div class="center"><strong id="hello"></strong></div>
+      <p class="hint center">Choose a video from your phone. Short, vertical videos (30 seconds or less) work best.</p>
+      <div class="error" id="pick-error" hidden></div>
+      <input type="file" id="video-input" accept="video/*" hidden>
+      <button id="btn-choose">🎬 Choose a video</button>
+      <button id="btn-edit" class="secondary">Change my name / photo</button>
+    </div>
+
+    <!-- Ready to create -->
+    <div id="view-ready" hidden>
+      <p class="center" id="ready-info"></p>
+      <div class="note" id="ready-warning" hidden></div>
+      <button id="btn-create">Create my video</button>
+      <button id="btn-other" class="secondary">Choose a different video</button>
+    </div>
+
+    <!-- Working -->
+    <div id="view-working" hidden>
+      <p class="center"><strong>Creating your video…</strong><br>
+        <span class="hint">Keep this screen open. If you switch apps, it pauses and carries on when you come back.</span></p>
+      <div class="progress"><div id="bar"></div></div>
+      <p class="center hint" id="progress-text">0%</p>
+      <button id="btn-cancel-work" class="secondary">Cancel</button>
+    </div>
+
+    <!-- Result -->
+    <div id="view-result" hidden>
+      <video id="result-video" controls playsinline></video>
+      <div class="note" id="result-note" hidden></div>
+      <button id="btn-download">⬇ Download video</button>
+      <button id="btn-share" class="secondary" hidden>Share…</button>
+      <button id="btn-again" class="secondary">Make another video</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SETTINGS (you normally don't need to change these)
+   ============================================================ */
+const CONFIG = {
+  MAX_LONG_SIDE: 1280,      // bigger videos are scaled down so the longer side is at most this many pixels
+  FPS: 30,                  // frames per second of the new video
+  VIDEO_BITRATE: 4000000,   // video quality (4 Mbps)
+  AUDIO_BITRATE: 128000,    // sound quality
+  WARN_SECONDS: 60          // show a gentle warning for videos longer than this
+};
+
+/* ---------- small helpers ---------- */
+const $ = id => document.getElementById(id);
+const VIEWS = ['setup', 'pick', 'ready', 'working', 'result'];
+function show(name) {
+  VIEWS.forEach(v => $('view-' + v).hidden = (v !== name));
+  $('stage').hidden = !(name === 'ready' || name === 'working');
+}
+const even = n => Math.max(2, Math.round(n / 2) * 2);   // video sizes work best as even numbers
+function fmtTime(s) {
+  s = Math.round(s);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function showPickError(msg) {
+  const el = $('pick-error');
+  el.textContent = msg || '';
+  el.hidden = !msg;
+}
+
+/* ---------- saved user details (same storage as the picture page) ---------- */
+const STORAGE_KEY = 'statusPicProfile';
+let currentProfile = null;   // also kept in memory, in case the browser blocks saving
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
+}
+function saveProfile(p) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); return true; } catch (e) { return false; }
+}
+function getProfile() { return currentProfile || loadProfile(); }
+
+/* ---------- resize the uploaded photo to a small square ---------- */
+function fileToSquareDataUrl(file, size) {
+  size = size || 400;
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const s = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = (img.naturalWidth - s) / 2, sy = (img.naturalHeight - s) / 2;
+      c.getContext('2d').drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that image.')); };
+    img.src = url;
+  });
+}
+function loadImg(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not load your photo.'));
+    img.src = src;
+  });
+}
+
+/* ---------- the footer (name + photo), drawn once and reused on every frame ---------- */
+function buildFooter(photo, profile, W, footerH) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = footerH;
+  const f = c.getContext('2d');
+
+  const bg = f.createLinearGradient(0, 0, W, footerH);
+  bg.addColorStop(0, '#fff3e6');
+  bg.addColorStop(1, '#ffd3a8');
+  f.fillStyle = bg;
+  f.fillRect(0, 0, W, footerH);
+
+  const bar = f.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, '#f58220');
+  bar.addColorStop(1, '#d94f00');
+  f.fillStyle = bar;
+  f.fillRect(0, 0, W, Math.max(4, Math.round(W * 0.007)));
+
+  const pad = footerH * 0.16;
+  const d = footerH - pad * 2;
+  const gap = footerH * 0.22;
+  const FONT = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+  let fontSize = footerH * 0.32;
+  const maxTextW = W * 0.8 - d - gap;
+  f.font = '700 ' + fontSize + 'px ' + FONT;
+  while (f.measureText(profile.name).width > maxTextW && fontSize > 10) {
+    fontSize -= 2;
+    f.font = '700 ' + fontSize + 'px ' + FONT;
+  }
+  const textW = f.measureText(profile.name).width;
+  const startX = (W - (d + gap + textW)) / 2;
+  const cy = footerH / 2;
+
+  f.save();
+  f.beginPath();
+  f.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
+  f.closePath();
+  f.clip();
+  f.drawImage(photo, startX, cy - d / 2, d, d);
+  f.restore();
+
+  f.beginPath();
+  f.arc(startX + d / 2, cy, d / 2, 0, Math.PI * 2);
+  f.lineWidth = Math.max(2, d * 0.04);
+  f.strokeStyle = '#f26b1d';
+  f.stroke();
+
+  f.fillStyle = '#3b1a08';
+  f.textBaseline = 'middle';
+  f.textAlign = 'left';
+  f.fillText(profile.name, startX + d + gap, cy);
+  return c;
+}
+
+/* ---------- state for the video being made ---------- */
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d');
+let videoEl = null, objectUrl = null, layout = null, footerCanvas = null;
+let recorder = null, chunks = [], running = false, rafId = 0, discard = false;
+let audioCtx = null, activeStream = null, wakeLock = null;
+let resultUrl = null, resultBlob = null, resultExt = 'mp4';
+
+function drawFrame() {
+  if (!videoEl || !layout) return;
+  ctx.drawImage(videoEl, 0, 0, layout.W, layout.H);
+  ctx.drawImage(footerCanvas, 0, layout.H);
+}
+
+async function lockScreen() {
+  try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function unlockScreen() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+}
+
+function cleanupVideo() {
+  running = false;
+  cancelAnimationFrame(rafId);
+  if (videoEl) {
+    try { videoEl.pause(); } catch (e) {}
+    videoEl.onended = null; videoEl.onerror = null; videoEl.onseeked = null;
+    videoEl.removeAttribute('src');
+    try { videoEl.load(); } catch (e) {}
+    videoEl.remove();
+    videoEl = null;
+  }
+  if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+  if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
+  unlockScreen();
+}
+function cleanupResult() {
+  if (resultUrl) { URL.revokeObjectURL(resultUrl); resultUrl = null; }
+  resultBlob = null;
+  const rv = $('result-video');
+  rv.pause(); rv.removeAttribute('src'); rv.load();
+}
+
+/* ---------- screens ---------- */
+let pendingPhoto = null;
+
+function validateSetup() {
+  $('btn-save').disabled = !($('name-input').value.trim() && pendingPhoto);
+}
+function showSetup(existing) {
+  pendingPhoto = existing ? existing.photo : null;
+  $('name-input').value = existing ? existing.name : '';
+  $('photo-input').value = '';
+  const prev = $('photo-preview');
+  if (pendingPhoto) { prev.src = pendingPhoto; prev.hidden = false; } else { prev.hidden = true; }
+  $('setup-title').textContent = existing ? 'Update your details' : "Let's set you up (one time only)";
+  $('btn-cancel').hidden = !existing;
+  validateSetup();
+  show('setup');
+}
+function showPick() {
+  const p = getProfile();
+  $('hello').textContent = p && p.name ? 'Hi, ' + p.name : '';
+  show('pick');
+}
+
+/* ---------- a video was chosen: load it and show a preview ---------- */
+async function onVideoPicked(file) {
+  cleanupVideo();
+  showPickError('');
+  const profile = getProfile();
+  if (!profile) { showSetup(null); return; }
+
+  objectUrl = URL.createObjectURL(file);
+  videoEl = document.createElement('video');
+  videoEl.playsInline = true;
+  videoEl.setAttribute('playsinline', '');
+  videoEl.preload = 'auto';
+  // keep it in the page (some phones need that) but out of sight
+  videoEl.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none;';
+  document.body.appendChild(videoEl);
+  videoEl.src = objectUrl;
+
+  try {
+    await new Promise((resolve, reject) => {
+      videoEl.onloadedmetadata = resolve;
+      videoEl.onerror = () => reject(new Error(
+        "Your browser can't read this video. Try a video recorded with the phone's camera app, or open this page in Chrome (Android) or Safari (iPhone)."));
+    });
+    if (!videoEl.videoWidth || !videoEl.videoHeight) throw new Error('This file does not contain a picture. Please choose a video.');
+    if (!isFinite(videoEl.duration) || videoEl.duration <= 0) throw new Error('Could not work out the length of this video. Please try another one.');
+
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    const s = Math.min(1, CONFIG.MAX_LONG_SIDE / Math.max(vw, vh));
+    const W = even(vw * s), H = even(vh * s), footerH = even(W * 0.13);
+    layout = { W, H, footerH, totalH: H + footerH };
+
+    const photo = await loadImg(profile.photo);
+    footerCanvas = buildFooter(photo, profile, W, footerH);
+    canvas.width = W;
+    canvas.height = layout.totalH;
+
+    // show the first moment of the video with the footer
+    await new Promise(resolve => {
+      let done = false;
+      const fin = () => { if (!done) { done = true; resolve(); } };
+      videoEl.onseeked = fin;
+      setTimeout(fin, 1500);
+      try { videoEl.currentTime = Math.min(0.1, videoEl.duration / 2); } catch (e) { fin(); }
+    });
+    videoEl.onseeked = null;
+    drawFrame();
+  } catch (err) {
+    cleanupVideo();
+    showPickError(err.message || 'Something went wrong while opening the video.');
+    show('pick');
+    return;
+  }
+
+  const dur = videoEl.duration;
+  $('ready-info').textContent = 'Video length ' + fmtTime(dur) + '. Creating it takes about the same time.';
+  const warn = $('ready-warning');
+  if (dur > CONFIG.WARN_SECONDS) {
+    warn.textContent = 'This video is quite long. WhatsApp status works best with short videos, so you may want to trim it first.';
+    warn.hidden = false;
+  } else {
+    warn.hidden = true;
+  }
+  show('ready');
+}
+
+/* ---------- create the new video ---------- */
+function pickMime() {
+  const options = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  for (const t of options) {
+    try { if (MediaRecorder.isTypeSupported(t)) return t; } catch (e) {}
+  }
+  return '';
+}
+
+function setProgress(p) {
+  $('bar').style.width = p + '%';
+  $('progress-text').textContent = p + '%';
+}
+
+function failCreate(msg) {
+  discard = true;
+  try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
+  cleanupVideo();
+  showPickError(msg);
+  show('pick');
+}
+
+function loop() {
+  if (!running || !videoEl) return;
+  drawFrame();
+  const pct = Math.min(100, Math.round((videoEl.currentTime / videoEl.duration) * 100));
+  setProgress(pct);
+  rafId = requestAnimationFrame(loop);
+}
+
+function startCreate() {
+  if (!(window.MediaRecorder && canvas.captureStream)) {
+    failCreate("This browser can't create videos. Please open this page in Chrome (Android) or Safari (iPhone).");
+    return;
+  }
+  const mime = pickMime();
+  show('working');
+  setProgress(0);
+  discard = false;
+  chunks = [];
+
+  // carry the video's sound into the new video (without playing it out loud)
+  let audioTracks = [];
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    const src = audioCtx.createMediaElementSource(videoEl);
+    const dest = audioCtx.createMediaStreamDestination();
+    src.connect(dest);
+    audioTracks = dest.stream.getAudioTracks();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {
+    audioCtx = null;
+    audioTracks = [];
+  }
+
+  activeStream = new MediaStream([...canvas.captureStream(CONFIG.FPS).getVideoTracks(), ...audioTracks]);
+  const opts = { videoBitsPerSecond: CONFIG.VIDEO_BITRATE, audioBitsPerSecond: CONFIG.AUDIO_BITRATE };
+  if (mime) opts.mimeType = mime;
+  try {
+    recorder = new MediaRecorder(activeStream, opts);
+  } catch (e) {
+    try { recorder = new MediaRecorder(activeStream); }
+    catch (e2) { failCreate("This browser couldn't start recording. Please try Chrome (Android) or Safari (iPhone)."); return; }
+  }
+
+  recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    if (discard) return;
+    const type = (recorder.mimeType || mime || 'video/webm').split(';')[0];
+    const blob = new Blob(chunks, { type });
+    if (blob.size < 1000) { failCreate('The video came out empty. Please try again.'); return; }
+    cleanupVideo();
+    cleanupResult();
+    resultBlob = blob;
+    resultExt = type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+    resultUrl = URL.createObjectURL(blob);
+    $('result-video').src = resultUrl;
+    const note = $('result-note');
+    if (resultExt === 'webm') {
+      note.textContent = 'Your browser saved this as a WebM video. Some phones and WhatsApp may not accept WebM. For an MP4, open this page in Safari (iPhone) or the latest Chrome (Android).';
+      note.hidden = false;
+    } else {
+      note.hidden = true;
+    }
+    show('result');
+  };
+
+  videoEl.onended = () => {
+    drawFrame();
+    setProgress(100);
+    setTimeout(() => {
+      running = false;
+      cancelAnimationFrame(rafId);
+      try { if (recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
+    }, 300);
+  };
+  videoEl.onerror = () => failCreate('The video stopped playing unexpectedly. Please try again.');
+
+  videoEl.currentTime = 0;
+  drawFrame();
+  recorder.start(500);
+  running = true;
+  lockScreen();
+  loop();
+  videoEl.play().catch(() => failCreate("The video couldn't start playing. Please tap 'Create my video' again."));
+}
+
+/* ---------- pause while the page is in the background ---------- */
+document.addEventListener('visibilitychange', () => {
+  if (!running || !videoEl || !recorder) return;
+  try {
+    if (document.hidden) { videoEl.pause(); recorder.pause(); }
+    else { recorder.resume(); videoEl.play().catch(() => {}); }
+  } catch (e) {}
+});
+
+/* ---------- file name for the download ---------- */
+function fileName() {
+  const p = getProfile();
+  const safe = (p && p.name ? p.name : 'me').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  return 'status-video-' + (safe || 'me') + '.' + resultExt;
+}
+
+/* ---------- button wiring ---------- */
+$('name-input').addEventListener('input', validateSetup);
+
+$('photo-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    pendingPhoto = await fileToSquareDataUrl(file, 400);
+    $('photo-preview').src = pendingPhoto;
+    $('photo-preview').hidden = false;
+  } catch (err) {
+    pendingPhoto = null;
+    alert(err.message);
+  }
+  validateSetup();
+});
+
+$('btn-save').addEventListener('click', () => {
+  const profile = { name: $('name-input').value.trim(), photo: pendingPhoto };
+  if (!saveProfile(profile)) {
+    alert('Could not save your details on this device (storage may be blocked). You can still create the video now.');
+  }
+  currentProfile = profile;
+  showPick();
+});
+$('btn-cancel').addEventListener('click', showPick);
+$('btn-edit').addEventListener('click', () => showSetup(getProfile()));
+
+$('btn-choose').addEventListener('click', () => $('video-input').click());
+$('video-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) onVideoPicked(file);
+});
+$('btn-other').addEventListener('click', () => { cleanupVideo(); showPick(); });
+$('btn-create').addEventListener('click', startCreate);
+
+$('btn-cancel-work').addEventListener('click', () => {
+  discard = true;
+  try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch (e) {}
+  cleanupVideo();
+  showPick();
+});
+
+$('btn-download').addEventListener('click', () => {
+  if (!resultUrl) return;
+  const a = document.createElement('a');
+  a.href = resultUrl;
+  a.download = fileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+$('btn-share').addEventListener('click', () => {
+  if (!resultBlob) return;
+  const file = new File([resultBlob], fileName(), { type: resultBlob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file] }).catch(() => {});
+  }
+});
+$('btn-again').addEventListener('click', () => { cleanupResult(); showPick(); });
+
+/* ---------- start-up ---------- */
+(function init() {
+  if (navigator.canShare && navigator.share) $('btn-share').hidden = false;
+  if (getProfile()) showPick(); else showSetup(null);
+})();
+</script>
+</body>
+</html>
